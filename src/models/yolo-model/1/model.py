@@ -108,7 +108,6 @@ class TritonPythonModel:
         for request in requests:
             # Get INPUT0
             image_bytes = pb_utils.get_input_tensor_by_name(request, "images")
-            # pb_utils.Logger.log_info(f"The length of the image bytes {len(image_bytes.as_numpy().tolist())}")
             inputs = []
             for image in image_bytes.as_numpy():
                 # pb_utils.Logger.log_info(f"{(image[0])} initialised")
@@ -128,11 +127,13 @@ class TritonPythonModel:
             results = pb_utils.Tensor("output", results.astype(output_dtype))
             results = pb_utils.InferenceResponse(output_tensors= [results])
             response.append(results)
+            
+        pb_utils.Logger.log_info(f"Response Length: {len(response)}")
         return response
             
             
         
-            # pb_utils.Logger.log_info(f"{type(input)} initialised")
+            
             
         
   
