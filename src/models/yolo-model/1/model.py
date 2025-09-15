@@ -128,7 +128,6 @@ class TritonPythonModel:
             results = pb_utils.InferenceResponse(output_tensors= [results])
             response.append(results)
             
-        pb_utils.Logger.log_info(f"Response Length: {len(response)}")
         return response
             
             
@@ -142,4 +141,4 @@ class TritonPythonModel:
         Implementing `finalize` function is optional. This function allows
         the model to perform any necessary clean ups before exit.
         """
-        print("Cleaning up...")
+         pb_utils.Logger.log_info("Cleaning up...")
