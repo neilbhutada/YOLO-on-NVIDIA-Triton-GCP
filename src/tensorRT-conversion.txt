@@ -1,0 +1,7 @@
+"numpy<2"
+"onnx>=1.19.0"
+"onnxruntime-gpu>=1.22.0"
+"onnxslim>=0.1.67"
+"tensorrt>=10.2,<10.3",
+"tensorrt-bindings>=8.6.1"
+"torch-tensorrt>=1.4.0"
