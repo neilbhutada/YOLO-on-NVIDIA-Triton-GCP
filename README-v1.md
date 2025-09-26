@@ -36,3 +36,11 @@ docker run --rm --gpus all -p 8000:8000 -e  AIP_STORAGE_URI=<gcs path where you 
 docker run -ti --rm --gpus all -p 8000:8000 -v $(pwd):/workspace <docker image name> bash
 tritonserver --model-repository=/workspace/models
 ```
+
+## Inference 
+
+```
+curl -s -X POST http://localhost:8000/v2/models/yolo11v/infer \
+  -H "Content-Type: application/json" \
+  --data @infer.json
+```
