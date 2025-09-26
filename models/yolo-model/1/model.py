@@ -66,11 +66,11 @@ class TritonPythonModel:
         script_dir = Path(__file__).resolve().parent
         os.chdir(script_dir)
         self.model_config = model_config = json.loads(args["model_config"])
-        with open('custom_config.json', 'rb') as file:
-            custom_config = json.load(file)
+        with open('input_config.json', 'rb') as file:
+            input_config = json.load(file)
 
         
-        self.model = YOLO(custom_config['model_file'])
+        self.model = YOLO(input_config['model_file'])
         output_config = pb_utils.get_output_config_by_name(model_config, "output")
         self.output_dtype = pb_utils.triton_string_to_numpy(
             output_config["data_type"]
