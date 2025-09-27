@@ -106,7 +106,7 @@ class TritonPythonModel:
         # Every Python backend must iterate over everyone of the requests
         # and create a pb_utils.InferenceResponse for each of them.
         for request in requests:
-            # Get INPUT "images" from the request
+            
             image_bytes = pb_utils.get_input_tensor_by_name(request, "images")
             inputs = []
             for image in image_bytes.as_numpy():
