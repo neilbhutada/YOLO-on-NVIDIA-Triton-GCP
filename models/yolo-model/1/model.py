@@ -139,4 +139,4 @@ class TritonPythonModel:
         Implementing `finalize` function is optional. This function allows
         the model to perform any necessary clean ups before exit.
         """
-         pb_utils.Logger.log_info("Cleaning up...")
+        pb_utils.Logger.log_info("Cleaning up...")
