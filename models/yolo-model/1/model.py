@@ -110,9 +110,7 @@ class TritonPythonModel:
             image_bytes = pb_utils.get_input_tensor_by_name(request, "images")
             inputs = []
             for image in image_bytes.as_numpy():
-                # pb_utils.Logger.log_info(f"{(image[0])} initialised")
                 nparr = np.frombuffer(b64decode(image[0]), np.uint8) 
-                # pb_utils.Logger.log_info(f"{(nparr)} initialised")
                 bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR) 
                 img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
                 inputs.append(img)
