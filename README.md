@@ -118,7 +118,7 @@ You should receive JSON predictions corresponding to your input image(s).
 
 ## 3) Deploy to Vertex AI Endpoints
 
-See `upload-to-vertex_ai.ipynb` for step-by-step deployment instructions to **Vertex AI Endpoints** using the same model repository layout.
+See [`upload-to-vertex_ai.ipynb`](upload-to-vertex_ai.ipynb) for step-by-step deployment instructions to **Vertex AI Endpoints** using the same model repository layout.
 
 ---
 
