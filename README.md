@@ -1,103 +1,130 @@
-# YOLO-on-NVIDIA-Triton-GCP
-Repository containing code to implement a YOLO model on NVIDIA Triton and host it on Google Cloud Platform (Vertex AI)
+# YOLO on NVIDIA Triton (GCP / Vertex AI)
 
-## Pre-requisites
+Code and instructions to deploy a YOLO model with **NVIDIA Triton Inference Server** and host it on **Google Cloud Platform (Vertex AI Endpoints)**.
 
-1. NVIDIA GPU(s) - for example: NVIDIA L4 
-2. Docker 
-3. Python 3
-4. Ideally, a linux machine. For example, a g2 instance on Vertex AI Workbench. 
-5. **Most importantly - clone this repo**
+## Table of Contents
+- [Prerequisites](#prerequisites)
+- [Quick Overview](#quick-overview)
+- [1) Convert your YOLO PyTorch model to TensorRT](#1-convert-your-yolo-pytorch-model-to-tensorrt)
+- [2) Run and test Triton Server locally](#2-run-and-test-triton-server-locally)
+  - [2.1 Without GCS integration](#21-without-gcs-integration)
+  - [2.2 With GCS integration](#22-with-gcs-integration)
+  - [2.3 Local inference test](#23-local-inference-test)
+- [3) Deploy to Vertex AI Endpoints](#3-deploy-to-vertex-ai-endpoints)
+- [References](#references)
 
-## Steps
+## Prerequisites
+1. **NVIDIA GPU** (e.g., NVIDIA L4)
+2. **Docker**
+3. **Python 3**
+4. **Linux** machine recommended (e.g., a **G2** GPU instance or Vertex AI Workbench VM)
+5. **Clone this repository**
+   ```bash
+   git clone <this-repo-url>
+   cd YOLO-on-NVIDIA-Triton-GCP
+   ```
 
-1. ### Convert your YOLO Pytorch model to a TensorRT format
+## Quick Overview
+- Convert a YOLO **PyTorch** model to **TensorRT** (`.engine`).
+- Organize the **Triton model repository** under `models/`.
+- Run **Triton Server** locally (optionally backed by **GCS** for parity with Vertex AI).
+- Verify inference using a generated JSON payload and a `curl` request.
+- Deploy the same artifact layout to **Vertex AI Endpoints**.
 
-    i. Download/Train a YOLO Pytorch model of your choice. 
+---
 
-    ii. Build the docker image from Dockerfile of this repo with `docker build -t <image name> .` Makesure you run this command at the root of this repo and please change the `<image name>` to something more appropriate.  
+## 1) Convert your YOLO PyTorch model to TensorRT
 
-    iii. Copy your Pytorch model in the `convert-to-tensorRT` directory. Change the model name in `yolo-pt-to-tensorrt.py`. 
+i) Download or train a YOLO **PyTorch** model of your choice.
 
-    iv. Run the docker image built in step (ii) in interactive mode and mount the current directory with `docker run -ti --rm --gpus all -p 8000:8000 -v $(pwd):/workspace <image name> bash` 
+ii) Build the Docker image from this repo’s `Dockerfile` (run at the repo root). Replace `<IMAGE_NAME>` with something meaningful.
+```bash
+docker build -t <IMAGE_NAME> .
+```
 
-    v. Navigate to `/workspace/convert-to-tensorRT` within the docker container. Then run the following commands:
-    ```
-    pip install -r tensorRT-conversion.txt
-    python3 yolo-pt-to-tensorrt.py
-    ```
-    After this command you should see a TensorRT (`.engine`) file with your YOLO model name. Please move/copy this TensorRT file under `/workspace/models/yolo-model/1/`. 
-    
-    Note, you can run the copy/move command outside the docker container as we have mounted the current working directory.
+iii) Copy your **PyTorch** model into the `convert-to-tensorRT/` directory and update the model path/name in `convert-to-tensorRT/yolo-pt-to-tensorrt.py`.
 
-    vi. Edit `models/yolo-model/1/input_config.json` to include the name of the TensorRT file.
-  
-2. ### Test the Triton Server locally
+iv) Run the image in interactive mode, mounting the current directory:
+```bash
+docker run -ti --rm --gpus all   -p 8000:8000   -v "$(pwd)":/workspace   <IMAGE_NAME> bash
+```
 
-    There are two ways to test the Triton Server locally: with and without GCS integration.
+v) Inside the container, navigate and run the conversion:
+```bash
+cd /workspace/convert-to-tensorRT
+pip install -r tensorRT-conversion.txt
+python3 yolo-pt-to-tensorrt.py
+```
 
-    #### Without GCS integration
+After the script completes, you should see a **TensorRT `.engine`** file for your model.  
+**Move or copy** the `.engine` file to:
+```
+/workspace/models/yolo-model/1/
+```
 
-    i. If your docker container is not running, please start it by running the command in step (ii.) of the previous section.
+> Note: You can also run the copy/move from your host—since the current directory is mounted to `/workspace`.
 
-    ii. Run the follow command within the container to start the Triton Server:
+vi) Update `models/yolo-model/1/input_config.json` to reference the generated TensorRT engine filename.
 
-    `tritonserver --model-repository=/workspace/models`
+---
 
-    #### With GCS Integration
+## 2) Run and test Triton Server locally
 
-    i. Make sure the docker container is not running anymore. Enter `exit` to terminate the docker container.
+There are two ways to test locally: **without** and **with** **GCS** integration.
 
-    ii. Copy the `models` folder to GCS. For simplicity sake, you can use `gsutil`. The destination GCS URL for `models` should look something like this: `gs://<your gcs bucket>/<an optional directory in your bucket>/models`
+### 2.1 Without GCS integration
 
-    iii. Run the follow command to almost replicate how Triton Server will be behave on a Vertex AI Endpoint:
-    ```
-    docker run --rm --gpus all -p 8000:8000 -e  AIP_STORAGE_URI=<gcs url of your model repository from the previous step> -e AIP_MODE=True <docker image name> 
-    ```
+i) If your container isn’t running, (re)start it as in step **1.iv**.
 
-    #### Testing Inferencing Locally
+ii) Launch Triton inside the container:
+```bash
+tritonserver --model-repository=/workspace/models
+```
+> Default ports: HTTP `8000`, gRPC `8001`, Metrics `8002`.
 
-    i. Open another terminal and leave the container running the Triton Server from the previous sections undistrubuted.
+### 2.2 With GCS integration
 
-    ii. Edit `payload_generation.py` to include the file names/paths of the image(s) you want to inference.
+i) If a container is still running, type `exit` to stop it.
 
-    iii. Run the follow command to install appropriate packages and `payload_generation.py`:
+ii) Copy the `models/` folder to GCS. For simplicity’s sake, you can use `gsutil`.  
+The destination should look like:  
+`gs://<YOUR_BUCKET>/<optional/subdir>/models`
 
-    ```
-    pip install opencv-python
-    python payload_generation.py
-    ```
+iii) Start a new container that points Triton to the GCS model repository (this mimics Vertex AI behavior):
+```bash
+docker run --rm --gpus all -p 8000:8000   -e AIP_STORAGE_URI="gs://<YOUR_BUCKET>/<optional/subdir>/models"   -e AIP_MODE=True   <IMAGE_NAME>
+```
 
-    The output will be a json file called `payload.json`
+### 2.3 Local inference test
 
-    iv. Use the following curl command and get predictions for the corresponding image(s):
+i) Open another terminal; leave the Triton container running **undisturbed**.
 
-    ```
-    curl -s -X POST http://localhost:8000/v2/models/yolo-model/infer \
-  -H "Content-Type: application/json" \
-  --data @payload.json
-    ```
-3. ### Deploy to Vertex AI Endpoints
+ii) Edit `payload_generation.py` and set the file names/paths of the image(s) you want to run inference on.
 
-  Please refer to `upload-to-vertex_ai.ipynb` for detailed instructions.
+iii) Install dependencies and generate the payload:
+```bash
+pip install opencv-python
+python payload_generation.py
+```
+This produces a `payload.json`.
+
+iv) Send the request to Triton:
+```bash
+curl -s -X POST http://localhost:8000/v2/models/yolo-model/infer   -H "Content-Type: application/json"   --data @payload.json
+```
+You should receive JSON predictions corresponding to your input image(s).
+
+---
+
+## 3) Deploy to Vertex AI Endpoints
+
+See `upload-to-vertex_ai.ipynb` for step-by-step deployment instructions to **Vertex AI Endpoints** using the same model repository layout.
+
+---
 
 ## References
-
-- <a href="https://docs.ultralytics.com/modes/predict/#inference-sources"> YOLO model predictions guide </a>
-- <a href="https://docs.ultralytics.com/integrations/tensorrt/"> Convert YOLO Pytorch models to a TensorRT format </a>
-- <a href="https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver"> NVIDIA Triton Server Docker images </a>
-- <a href="https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/python_backend/README.html"> NVIDIA Trition Server's Python Backend guide </a>
-- <a href="https://cloud.google.com/vertex-ai/docs/predictions/using-nvidia-triton"> GCP x NVIDIA Trition Server Guide </a>
-
-
-
-
-
- 
-
-
-
-
-
-
-
+- <a href="https://docs.ultralytics.com/modes/predict/#inference-sources">YOLO model predictions guide</a>  
+- <a href="https://docs.ultralytics.com/integrations/tensorrt/">Convert YOLO PyTorch models to TensorRT</a>  
+- <a href="https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver">NVIDIA Triton Server Docker images</a>  
+- <a href="https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/python_backend/README.html">NVIDIA Triton Python Backend guide</a>  
+- <a href="https://cloud.google.com/vertex-ai/docs/predictions/using-nvidia-triton">GCP × NVIDIA Triton Server guide</a>
